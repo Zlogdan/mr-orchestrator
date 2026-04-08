@@ -1,0 +1,124 @@
+/* Общие стили */
+.root {
+    -fx-background-color: #f5f5f5;
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 13px;
+}
+
+/* Заголовки колонок таблицы */
+.table-view .column-header {
+    -fx-background-color: #3c4f6e;
+    -fx-text-fill: white;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+/* Строки таблицы */
+.table-row-cell:odd {
+    -fx-background-color: #f0f4fa;
+}
+
+.table-row-cell:even {
+    -fx-background-color: #ffffff;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #cce5ff;
+}
+
+/* Статус ячеек */
+.status-success {
+    -fx-text-fill: #1a7a2e;
+    -fx-font-weight: bold;
+}
+
+.status-error {
+    -fx-text-fill: #c0392b;
+    -fx-font-weight: bold;
+}
+
+.status-skipped {
+    -fx-text-fill: #7f8c8d;
+    -fx-font-style: italic;
+}
+
+.status-running {
+    -fx-text-fill: #1565c0;
+    -fx-font-weight: bold;
+}
+
+/* Кнопки */
+.button {
+    -fx-background-color: #3c4f6e;
+    -fx-text-fill: white;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+    -fx-padding: 6 14 6 14;
+}
+
+.button:hover {
+    -fx-background-color: #2c3e6e;
+}
+
+.button:disabled {
+    -fx-background-color: #a0aab8;
+}
+
+/* Лог-панель */
+.text-area .content {
+    -fx-background-color: #1e1e2e;
+}
+
+.text-area {
+    -fx-text-fill: #cdd6f4;
+    -fx-background-color: #1e1e2e;
+    -fx-font-family: monospace;
+    -fx-font-size: 12px;
+}
+
+/* Метки */
+.label {
+    -fx-text-fill: #2d3748;
+}
+
+/* TitledPane */
+.titled-pane > .title {
+    -fx-background-color: #3c4f6e;
+    -fx-text-fill: white;
+}
+
+.titled-pane > .title > .text {
+    -fx-fill: white;
+}
+
+/* Прогресс-бар */
+.progress-bar .bar {
+    -fx-accent: #3c78d8;
+}
+
+/* CheckBox */
+.check-box {
+    -fx-text-fill: #2d3748;
+}
+
+/* ComboBox */
+.combo-box {
+    -fx-background-color: white;
+    -fx-border-color: #bcc3ce;
+    -fx-border-radius: 4;
+}
+
+/* TextField */
+.text-field {
+    -fx-background-color: white;
+    -fx-border-color: #bcc3ce;
+    -fx-border-radius: 4;
+    -fx-padding: 5;
+}
+
+.text-field:focused {
+    -fx-border-color: #3c78d8;
+}
