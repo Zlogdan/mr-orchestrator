@@ -5,7 +5,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mrOrchestrator.api.model.Branch;
 import com.mrOrchestrator.api.model.MergeRequest;
 import com.mrOrchestrator.api.model.Pipeline;
+import com.mrOrchestrator.config.AppConfig;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -18,6 +27,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.cert.X509Certificate;
 
 /**
  * Клиент для взаимодействия с GitLab REST API
@@ -32,10 +44,86 @@ public class GitLabApiClient {
     public GitLabApiClient(String baseUrl, String token) {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.token = token;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(30))
-                .build();
+        this.httpClient = createHttpClient(null, null, null, false);
         this.objectMapper = new ObjectMapper();
+    }
+
+    public GitLabApiClient(AppConfig.GitLabConfig gitLabConfig) {
+        this.baseUrl = gitLabConfig.getBaseUrl().endsWith("/")
+                ? gitLabConfig.getBaseUrl().substring(0, gitLabConfig.getBaseUrl().length() - 1)
+                : gitLabConfig.getBaseUrl();
+        this.token = gitLabConfig.getToken();
+        this.httpClient = createHttpClient(
+                gitLabConfig.getTrustStorePath(),
+                gitLabConfig.getTrustStorePassword(),
+                gitLabConfig.getTrustStoreType(),
+                gitLabConfig.isDisableSslVerification()
+        );
+        this.objectMapper = new ObjectMapper();
+    }
+
+    private HttpClient createHttpClient(String trustStorePath, String trustStorePassword,
+                                        String trustStoreType, boolean disableSslVerification) {
+        try {
+            HttpClient.Builder builder = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(30));
+
+            if (disableSslVerification) {
+                TrustManager[] trustAllCerts = new TrustManager[]{
+                        new X509TrustManager() {
+                            @Override
+                            public void checkClientTrusted(X509Certificate[] chain, String authType) {
+                                // no-op
+                            }
+
+                            @Override
+                            public void checkServerTrusted(X509Certificate[] chain, String authType) {
+                                // no-op
+                            }
+
+                            @Override
+                            public X509Certificate[] getAcceptedIssuers() {
+                                return new X509Certificate[0];
+                            }
+                        }
+                };
+
+                SSLContext insecureSslContext = SSLContext.getInstance("TLS");
+                insecureSslContext.init(null, trustAllCerts, null);
+
+                SSLParameters sslParameters = new SSLParameters();
+                sslParameters.setEndpointIdentificationAlgorithm(null);
+
+                builder.sslContext(insecureSslContext);
+                builder.sslParameters(sslParameters);
+                return builder.build();
+            }
+
+            if (trustStorePath != null && !trustStorePath.isBlank()) {
+                KeyStore keyStore = KeyStore.getInstance(
+                        (trustStoreType == null || trustStoreType.isBlank()) ? "JKS" : trustStoreType);
+
+                char[] password = (trustStorePassword == null || trustStorePassword.isBlank())
+                        ? null
+                        : trustStorePassword.toCharArray();
+
+                try (FileInputStream fis = new FileInputStream(trustStorePath)) {
+                    keyStore.load(fis, password);
+                }
+
+                TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                tmf.init(keyStore);
+
+                SSLContext sslContext = SSLContext.getInstance("TLS");
+                sslContext.init(null, tmf.getTrustManagers(), null);
+
+                builder.sslContext(sslContext);
+            }
+
+            return builder.build();
+        } catch (GeneralSecurityException | IOException e) {
+            throw new RuntimeException("Ошибка инициализации SSL/truststore: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -98,7 +186,7 @@ public class GitLabApiClient {
                 .timeout(Duration.ofSeconds(30))
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = send(request, url);
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new RuntimeException("Ошибка создания MR: HTTP " + response.statusCode() + " - " + response.body());
         }
@@ -127,7 +215,7 @@ public class GitLabApiClient {
                 .timeout(Duration.ofSeconds(30))
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = send(request, url);
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new RuntimeException("Ошибка подтверждения MR: HTTP " + response.statusCode() + " - " + response.body());
         }
@@ -146,7 +234,7 @@ public class GitLabApiClient {
                 .timeout(Duration.ofSeconds(30))
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = send(request, url);
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new RuntimeException("Ошибка слияния MR: HTTP " + response.statusCode() + " - " + response.body());
         }
@@ -213,11 +301,23 @@ public class GitLabApiClient {
                 .timeout(Duration.ofSeconds(30))
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = send(request, url);
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new RuntimeException("HTTP ошибка " + response.statusCode() + " для " + url + ": " + response.body());
         }
         return response.body();
+    }
+
+    private HttpResponse<String> send(HttpRequest request, String url) throws Exception {
+        try {
+            return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (SSLHandshakeException e) {
+            throw new RuntimeException(
+                    "SSL ошибка при обращении к " + url + ": " + e.getMessage() +
+                            ". Добавьте сертификат GitLab в доверенные CA JRE или настройте truststore в config.yaml (gitlab.trustStorePath, gitlab.trustStorePassword, gitlab.trustStoreType).",
+                    e
+            );
+        }
     }
 
     /**

@@ -1,6 +1,10 @@
 gitlab:
   baseUrl: "https://gitlab.example.com"
   token: "your-personal-access-token"
+  disableSslVerification: false # true только для локальной разработки
+  trustStorePath: ""         # например: "C:/certs/gitlab-truststore.jks"
+  trustStorePassword: ""     # пароль truststore
+  trustStoreType: "JKS"      # JKS или PKCS12
 execution:
   threadCount: 4
   dryRun: false
