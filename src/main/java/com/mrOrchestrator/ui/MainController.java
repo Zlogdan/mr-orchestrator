@@ -193,7 +193,9 @@ public class MainController {
 
                     Platform.runLater(() -> {
                         row.setAvailableBranches(branchNames);
-                        // Выбрать первую найденную ветку, или "Пропустить"
+                        // Список всегда содержит SKIP_OPTION последним.
+                        // Если найдена хотя бы одна реальная ветка (size > 1), выбираем первую;
+                        // иначе выбираем SKIP_OPTION.
                         if (branchNames.size() > 1) {
                             row.setSelectedBranch(branchNames.get(0));
                         } else {

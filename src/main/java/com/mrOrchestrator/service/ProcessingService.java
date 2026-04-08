@@ -61,10 +61,6 @@ public class ProcessingService {
                         mrService.processRow(row, projectId, targetBranch, dryRun);
                     } finally {
                         semaphore.release();
-                        // Уведомление JavaFX потока об обновлении строки
-                        Platform.runLater(() -> {
-                            // Обновление происходит через свойства JavaFX — достаточно вызова runLater
-                        });
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
