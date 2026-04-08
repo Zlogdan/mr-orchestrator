@@ -1,0 +1,36 @@
+# Скомпилированные файлы Java
+target/
+*.class
+
+# Jar файлы
+*.jar
+!mr-orchestrator-*.jar
+
+# Maven
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE файлы
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+*.eclipse
+.vscode/
+*.swp
+*.swo
+
+# Лог файлы
+logs/
+*.log
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini

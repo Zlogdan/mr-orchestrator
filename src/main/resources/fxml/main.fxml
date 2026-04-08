@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="10" xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.mrOrchestrator.ui.MainController">
+    <padding>
+        <Insets top="15" right="15" bottom="15" left="15"/>
+    </padding>
+
+    <!-- URL репозитория -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="URL репозитория:" minWidth="220"/>
+        <TextField fx:id="repoUrlField" HBox.hgrow="ALWAYS"
+                   promptText="https://gitlab.example.com/group/project"/>
+    </HBox>
+
+    <!-- Целевая ветка -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Целевая ветка:" minWidth="220"/>
+        <ComboBox fx:id="targetBranchCombo" editable="true" prefWidth="250"
+                  promptText="main"/>
+        <Button text="Обновить ветки" onAction="#onRefreshBranches"/>
+    </HBox>
+
+    <!-- Поиск веток -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Частичные имена веток (через запятую):" minWidth="220"/>
+        <TextField fx:id="branchNamesField" HBox.hgrow="ALWAYS"
+                   promptText="feature/TASK-1, hotfix/BUG-2"/>
+        <Button text="Парсинг" onAction="#onParse"/>
+    </HBox>
+
+    <!-- Управление запуском -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <CheckBox fx:id="dryRunCheckBox" text="Dry Run"/>
+        <Button fx:id="runButton" text="Запуск" onAction="#onRun"
+                style="-fx-font-weight: bold;"/>
+    </HBox>
+
+    <!-- Таблица -->
+    <TableView fx:id="tableView" VBox.vgrow="ALWAYS" editable="true">
+        <columns>
+            <TableColumn fx:id="searchTermColumn" text="Исходное значение" prefWidth="150"/>
+            <TableColumn fx:id="sourceBranchColumn" text="Исходная ветка" prefWidth="250"/>
+            <TableColumn fx:id="statusColumn" text="Статус" prefWidth="100"/>
+            <TableColumn fx:id="commentColumn" text="Комментарий" prefWidth="250"/>
+            <TableColumn fx:id="progressColumn" text="Прогресс" prefWidth="130"/>
+        </columns>
+        <placeholder>
+            <Label text="Нет данных. Введите имена веток и нажмите «Парсинг»."/>
+        </placeholder>
+    </TableView>
+
+    <!-- Панель лога -->
+    <TitledPane text="Лог" expanded="true">
+        <ScrollPane fitToWidth="true" fitToHeight="true">
+            <TextArea fx:id="logArea" editable="false" wrapText="true"
+                      prefHeight="150" style="-fx-font-family: monospace;"/>
+        </ScrollPane>
+    </TitledPane>
+
+    <!-- Кнопки очистки -->
+    <HBox spacing="10">
+        <Button text="Очистить таблицу" onAction="#onClearTable"/>
+        <Button text="Очистить лог" onAction="#onClearLog"/>
+    </HBox>
+</VBox>

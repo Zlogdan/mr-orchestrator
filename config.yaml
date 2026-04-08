@@ -1,0 +1,6 @@
+gitlab:
+  baseUrl: "https://gitlab.example.com"
+  token: "your-personal-access-token"
+execution:
+  threadCount: 4
+  dryRun: false
