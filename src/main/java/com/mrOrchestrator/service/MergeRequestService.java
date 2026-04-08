@@ -4,6 +4,7 @@ import com.mrOrchestrator.api.GitLabApiClient;
 import com.mrOrchestrator.api.model.MergeRequest;
 import com.mrOrchestrator.ui.model.TableRowModel;
 import com.mrOrchestrator.util.AppLogger;
+import javafx.application.Platform;
 
 import java.util.List;
 
@@ -44,32 +45,38 @@ public class MergeRequestService {
 
         // Пропустить строку, если выбран вариант "Пропустить"
         if (sourceBranch == null || TableRowModel.SKIP_OPTION.equals(sourceBranch)) {
-            row.setStatus("пропущено");
-            row.setComment("Пользователь выбрал пропуск");
-            row.setProgress(1.0);
+            Platform.runLater(() -> {
+                row.setStatus("пропущено");
+                row.setComment("Пользователь выбрал пропуск");
+                row.setProgress(1.0);
+            });
             logger.info("Строка пропущена: " + row.getSearchTerm());
             return;
         }
 
         try {
-            row.setStatus("выполнение");
-            row.setProgress(0.1);
+            Platform.runLater(() -> {
+                row.setStatus("выполнение");
+                row.setProgress(0.1);
+            });
             logger.info("Обработка: " + sourceBranch + " → " + targetBranch);
 
             // Шаг 1: Найти существующий MR или создать новый
             MergeRequest mr = findOrCreateMr(projectId, sourceBranch, targetBranch, dryRun);
             if (mr == null) {
                 // dry-run режим без реального MR
-                row.setStatus("выполнено");
-                row.setComment("Dry-run: MR не создавался");
-                row.setProgress(1.0);
+                Platform.runLater(() -> {
+                    row.setStatus("выполнено");
+                    row.setComment("Dry-run: MR не создавался");
+                    row.setProgress(1.0);
+                });
                 return;
             }
-            row.setProgress(0.3);
+            Platform.runLater(() -> row.setProgress(0.3));
 
             // Шаг 2: Дождаться готовности к одобрению
             waitForApprovable(projectId, mr.getIid());
-            row.setProgress(0.5);
+            Platform.runLater(() -> row.setProgress(0.5));
 
             // Шаг 3: Одобрить MR
             if (!dryRun) {
@@ -81,11 +88,11 @@ public class MergeRequestService {
             } else {
                 logger.info("Dry-run: пропуск одобрения MR " + mr.getIid());
             }
-            row.setProgress(0.7);
+            Platform.runLater(() -> row.setProgress(0.7));
 
             // Шаг 4: Дождаться возможности слияния
             waitForMergeable(projectId, mr.getIid());
-            row.setProgress(0.85);
+            Platform.runLater(() -> row.setProgress(0.85));
 
             // Шаг 5: Влить MR
             if (!dryRun) {
@@ -96,20 +103,26 @@ public class MergeRequestService {
                 logger.info("Dry-run: пропуск слияния MR " + mr.getIid());
             }
 
-            row.setStatus("выполнено");
-            row.setComment(dryRun ? "Dry-run выполнен" : "MR влит успешно");
-            row.setProgress(1.0);
+            Platform.runLater(() -> {
+                row.setStatus("выполнено");
+                row.setComment(dryRun ? "Dry-run выполнен" : "MR влит успешно");
+                row.setProgress(1.0);
+            });
 
         } catch (ConflictException e) {
             logger.warn("Конфликт при обработке " + sourceBranch + ": " + e.getMessage());
-            row.setStatus("пропущено");
-            row.setComment("Конфликт: " + e.getMessage());
-            row.setProgress(1.0);
+            Platform.runLater(() -> {
+                row.setStatus("пропущено");
+                row.setComment("Конфликт: " + e.getMessage());
+                row.setProgress(1.0);
+            });
         } catch (Exception e) {
             logger.error("Ошибка при обработке " + sourceBranch, e);
-            row.setStatus("ошибка");
-            row.setComment(e.getMessage());
-            row.setProgress(1.0);
+            Platform.runLater(() -> {
+                row.setStatus("ошибка");
+                row.setComment(e.getMessage());
+                row.setProgress(1.0);
+            });
         }
     }
 
