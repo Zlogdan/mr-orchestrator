@@ -6,7 +6,7 @@
 
     <groupId>com.mrOrchestrator</groupId>
     <artifactId>mr-orchestrator</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -17,7 +17,7 @@
         <jackson.version>2.15.3</jackson.version>
         <slf4j.version>2.0.9</slf4j.version>
         <logback.version>1.4.12</logback.version>
-        <main.class>com.mrOrchestrator.Main</main.class>
+        <main.class>com.mrOrchestrator.Launcher</main.class>
     </properties>
 
     <dependencies>

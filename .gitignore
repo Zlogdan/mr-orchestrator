@@ -9,6 +9,7 @@ target/
 # Maven
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
+dependency-reduced-pom.xml
 
 # IDE файлы
 .idea/
