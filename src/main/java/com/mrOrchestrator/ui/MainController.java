@@ -16,6 +16,9 @@ import com.mrOrchestrator.util.AppLogger;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -27,6 +30,8 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
 /**
  * Контроллер главного окна приложения
@@ -48,6 +53,9 @@ public class MainController {
 
     @FXML
     private CheckBox dryRunCheckBox;
+
+    @FXML
+    private CheckBox approveOnlyCheckBox;
 
     @FXML
     private TableView<TableRowModel> tableView;
@@ -88,6 +96,7 @@ public class MainController {
             apiClient = new GitLabApiClient(config.getGitlab());
             logger.setUiCallback(this::appendLog);
             dryRunCheckBox.setSelected(config.getExecution().isDryRun());
+            approveOnlyCheckBox.setSelected(config.getExecution().isApproveOnly());
             logger.info("Конфигурация загружена успешно");
         } catch (Exception e) {
             logger.error("Ошибка загрузки конфигурации", e);
@@ -202,7 +211,9 @@ public class MainController {
                         // Если найдена хотя бы одна реальная ветка (size > 1), выбираем первую;
                         // иначе выбираем SKIP_OPTION.
                         if (branchNames.size() > 1) {
-                            row.setSelectedBranch(branchNames.get(0));
+                            String auto = branchNames.get(0);
+                            row.setSelectedBranch(auto);
+                            checkCommitCount(row, auto);
                         } else {
                             row.setSelectedBranch(TableRowModel.SKIP_OPTION);
                         }
@@ -245,8 +256,9 @@ public class MainController {
             return;
         }
 
-        // Применить состояние dry-run из чекбокса
+        // Применить состояние флагов из чекбоксов
         config.getExecution().setDryRun(dryRunCheckBox.isSelected());
+        config.getExecution().setApproveOnly(approveOnlyCheckBox.isSelected());
 
         runButton.setDisable(true);
 
@@ -295,6 +307,77 @@ public class MainController {
         alert.showAndWait();
     }
 
+    /**
+     * Асинхронно проверить количество коммитов и выставить предупреждение в comment.
+     */
+    void checkCommitCount(TableRowModel row, String sourceBranch) {
+        if (config == null) return;
+        int threshold = config.getExecution().getMaxCommitsWarning();
+        if (threshold <= 0) return;
+        String targetBranch = targetBranchCombo.getValue();
+        if (targetBranch == null || targetBranch.isBlank()) return;
+        if (sourceBranch == null || TableRowModel.SKIP_OPTION.equals(sourceBranch)) return;
+        String repoUrl = repoUrlField.getText().trim();
+        if (repoUrl.isEmpty()) return;
+        String projectId = apiClient.extractProjectId(repoUrl);
+        new Thread(() -> {
+            try {
+                int count = apiClient.getCommitCount(projectId, targetBranch, sourceBranch);
+                if (count > threshold) {
+                    Platform.runLater(() -> row.setComment("⚠ Много коммитов: " + count));
+                }
+            } catch (Exception e) {
+                logger.warn("Не удалось получить количество коммитов для " + sourceBranch + ": " + e.getMessage());
+            }
+        }, "commit-count-check").start();
+    }
+
+    /**
+     * Открыть окно настроек
+     */
+    @FXML
+    public void onOpenSettings() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/settings.fxml"));
+            Parent root = loader.load();
+            SettingsController ctrl = loader.getController();
+            ctrl.setConfig(config);
+
+            Stage settingsStage = new Stage();
+            settingsStage.initModality(Modality.WINDOW_MODAL);
+            settingsStage.initOwner(tableView.getScene().getWindow());
+            settingsStage.setTitle("Настройки");
+            Scene scene = new Scene(root);
+            scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+            settingsStage.setScene(scene);
+            settingsStage.setResizable(false);
+
+            ctrl.setStage(settingsStage);
+            ctrl.setOnSaveCallback(this::reloadConfig);
+
+            settingsStage.showAndWait();
+        } catch (Exception e) {
+            logger.error("Ошибка открытия окна настроек", e);
+            showError("Ошибка", "Не удалось открыть настройки:\n" + e.getMessage());
+        }
+    }
+
+    /**
+     * Перезагрузить конфигурацию после сохранения настроек
+     */
+    private void reloadConfig() {
+        try {
+            config = ConfigLoader.load();
+            apiClient = new GitLabApiClient(config.getGitlab());
+            dryRunCheckBox.setSelected(config.getExecution().isDryRun());
+            approveOnlyCheckBox.setSelected(config.getExecution().isApproveOnly());
+            logger.info("Конфигурация перезагружена");
+        } catch (Exception e) {
+            logger.error("Ошибка перезагрузки конфигурации", e);
+            showError("Ошибка", "Не удалось перезагрузить конфигурацию:\n" + e.getMessage());
+        }
+    }
+
     // =============================================
     // Внутренние классы-ячейки таблицы
     // =============================================
@@ -302,7 +385,7 @@ public class MainController {
     /**
      * Ячейка таблицы с выпадающим списком веток
      */
-    private static class ComboBoxTableCell extends TableCell<TableRowModel, String> {
+    private class ComboBoxTableCell extends TableCell<TableRowModel, String> {
 
         private final ComboBox<String> comboBox = new ComboBox<>();
 
@@ -311,8 +394,10 @@ public class MainController {
             comboBox.setOnAction(e -> {
                 TableRowModel row = getTableRow().getItem();
                 if (row != null) {
-                    row.setSelectedBranch(comboBox.getValue());
-                    commitEdit(comboBox.getValue());
+                    String selected = comboBox.getValue();
+                    row.setSelectedBranch(selected);
+                    commitEdit(selected);
+                    checkCommitCount(row, selected);
                 }
             });
         }

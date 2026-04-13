@@ -1,5 +1,6 @@
 package com.mrOrchestrator.config;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
@@ -33,5 +34,15 @@ public class ConfigLoader {
         }
 
         throw new IllegalStateException("Файл конфигурации config.yaml не найден в рабочей директории или classpath");
+    }
+
+    /**
+     * Сохраняет конфигурацию в config.yaml в рабочей директории.
+     * Создаёт файл, если он не существует.
+     */
+    public static void save(AppConfig config) throws Exception {
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        mapper.writerWithDefaultPrettyPrinter().writeValue(new File(CONFIG_FILE_NAME), config);
     }
 }

@@ -38,9 +38,11 @@ public class MergeRequestService {
      * @param row          строка таблицы
      * @param projectId    URL-закодированный идентификатор проекта
      * @param targetBranch целевая ветка
-     * @param dryRun       режим dry-run (без реальных изменений)
+     * @param dryRun       режим dry-run (без реальных изменений); имеет приоритет над approveOnly
+     * @param approveOnly  создать и одобрить MR, но не сливать
      */
-    public void processRow(TableRowModel row, String projectId, String targetBranch, boolean dryRun) {
+    public void processRow(TableRowModel row, String projectId, String targetBranch,
+                           boolean dryRun, boolean approveOnly) {
         String sourceBranch = row.getSelectedBranch();
 
         // Пропустить строку, если выбран вариант "Пропустить"
@@ -90,22 +92,29 @@ public class MergeRequestService {
             }
             Platform.runLater(() -> row.setProgress(0.7));
 
-            // Шаг 4: Дождаться возможности слияния
-            waitForMergeable(projectId, mr.getIid());
-            Platform.runLater(() -> row.setProgress(0.85));
+            // Шаг 4: Дождаться возможности слияния (пропускается при approveOnly)
+            if (!dryRun && !approveOnly) {
+                waitForMergeable(projectId, mr.getIid());
+                Platform.runLater(() -> row.setProgress(0.85));
+            }
 
-            // Шаг 5: Влить MR
-            if (!dryRun) {
+            // Шаг 5: Влить MR (пропускается при dryRun или approveOnly)
+            if (!dryRun && !approveOnly) {
                 MergeRequest merged = GitLabApiClient.withRetry(
                         () -> apiClient.mergeMergeRequest(projectId, mr.getIid()), MAX_RETRIES);
                 logger.info("MR влит: " + merged.getIid());
+            } else if (approveOnly && !dryRun) {
+                logger.info("ApproveOnly: пропуск слияния MR " + mr.getIid());
             } else {
                 logger.info("Dry-run: пропуск слияния MR " + mr.getIid());
             }
 
+            String finalComment = dryRun ? "Dry-run выполнен"
+                    : approveOnly ? "MR одобрен, ожидает слияния"
+                    : "MR влит успешно";
             Platform.runLater(() -> {
                 row.setStatus("выполнено");
-                row.setComment(dryRun ? "Dry-run выполнен" : "MR влит успешно");
+                row.setComment(finalComment);
                 row.setProgress(1.0);
             });
 

@@ -8,3 +8,5 @@ gitlab:
 execution:
   threadCount: 4
   dryRun: false
+  maxCommitsWarning: 0  # предупреждение если коммитов в ветке больше этого числа (0 = отключено)
+  approveOnly: false    # создать и одобрить MR, но не сливать

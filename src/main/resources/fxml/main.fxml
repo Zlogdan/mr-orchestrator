@@ -37,6 +37,7 @@
     <!-- Управление запуском -->
     <HBox spacing="10" alignment="CENTER_LEFT">
         <CheckBox fx:id="dryRunCheckBox" text="Dry Run"/>
+        <CheckBox fx:id="approveOnlyCheckBox" text="Только одобрение (без слияния)"/>
         <Button fx:id="runButton" text="Запуск" onAction="#onRun"
                 style="-fx-font-weight: bold;"/>
     </HBox>
@@ -63,9 +64,11 @@
         </ScrollPane>
     </TitledPane>
 
-    <!-- Кнопки очистки -->
+    <!-- Кнопки очистки и настройки -->
     <HBox spacing="10">
         <Button text="Очистить таблицу" onAction="#onClearTable"/>
         <Button text="Очистить лог" onAction="#onClearLog"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="Настройки" onAction="#onOpenSettings"/>
     </HBox>
 </VBox>

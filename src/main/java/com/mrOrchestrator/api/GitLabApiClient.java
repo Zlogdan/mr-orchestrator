@@ -194,6 +194,20 @@ public class GitLabApiClient {
     }
 
     /**
+     * Получить количество коммитов в sourceBranch относительно targetBranch.
+     * Использует GitLab Compare API — возвращает длину массива commits.
+     */
+    public int getCommitCount(String projectId, String targetBranch, String sourceBranch) throws Exception {
+        String url = baseUrl + "/api/v4/projects/" + projectId + "/repository/compare"
+                + "?from=" + URLEncoder.encode(targetBranch, StandardCharsets.UTF_8)
+                + "&to=" + URLEncoder.encode(sourceBranch, StandardCharsets.UTF_8);
+        String body = get(url);
+        Map<String, Object> resp = objectMapper.readValue(body, new TypeReference<>() {});
+        Object commits = resp.get("commits");
+        return (commits instanceof List<?> list) ? list.size() : 0;
+    }
+
+    /**
      * Получить один мёрж-реквест по IID
      */
     public MergeRequest getMergeRequest(String projectId, Long iid) throws Exception {

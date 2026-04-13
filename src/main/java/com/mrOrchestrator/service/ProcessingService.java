@@ -44,10 +44,11 @@ public class ProcessingService {
 
         int threadCount = config.getExecution().getThreadCount();
         boolean dryRun = config.getExecution().isDryRun();
+        boolean approveOnly = config.getExecution().isApproveOnly();
 
         String projectId = apiClient.extractProjectId(repoUrl);
         logger.info("Начало обработки: проект " + projectId + ", ветка " + targetBranch
-                + ", потоков: " + threadCount + ", dry-run: " + dryRun);
+                + ", потоков: " + threadCount + ", dry-run: " + dryRun + ", approveOnly: " + approveOnly);
 
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         // Семафор ограничивает число одновременных API вызовов
@@ -58,7 +59,7 @@ public class ProcessingService {
                 try {
                     semaphore.acquire();
                     try {
-                        mrService.processRow(row, projectId, targetBranch, dryRun);
+                        mrService.processRow(row, projectId, targetBranch, dryRun, approveOnly);
                     } finally {
                         semaphore.release();
                     }

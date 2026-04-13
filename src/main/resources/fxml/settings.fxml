@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="12"
+      xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.mrOrchestrator.ui.SettingsController">
+    <padding>
+        <Insets top="15" right="15" bottom="15" left="15"/>
+    </padding>
+
+    <Label text="Настройки" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+
+    <!-- GitLab -->
+    <TitledPane text="GitLab" collapsible="false" expanded="true">
+        <GridPane hgap="10" vgap="8">
+            <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+            <columnConstraints>
+                <ColumnConstraints minWidth="180" maxWidth="180"/>
+                <ColumnConstraints hgrow="ALWAYS"/>
+            </columnConstraints>
+
+            <Label text="Base URL:"                     GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+            <TextField fx:id="baseUrlField"             GridPane.columnIndex="1" GridPane.rowIndex="0"
+                       promptText="https://gitlab.example.com"/>
+
+            <Label text="Token:"                        GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+            <PasswordField fx:id="tokenField"           GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+            <Label text="Отключить SSL проверку:"       GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+            <CheckBox fx:id="disableSslCheckBox"        GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+
+            <Label text="Trust Store Path:"             GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+            <TextField fx:id="trustStorePathField"      GridPane.columnIndex="1" GridPane.rowIndex="3"
+                       promptText="C:/certs/gitlab.jks"/>
+
+            <Label text="Trust Store Password:"         GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+            <PasswordField fx:id="trustStorePasswordField" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+
+            <Label text="Trust Store Type:"             GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+            <TextField fx:id="trustStoreTypeField"      GridPane.columnIndex="1" GridPane.rowIndex="5"
+                       promptText="JKS"/>
+        </GridPane>
+    </TitledPane>
+
+    <!-- Выполнение -->
+    <TitledPane text="Выполнение" collapsible="false" expanded="true">
+        <GridPane hgap="10" vgap="8">
+            <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+            <columnConstraints>
+                <ColumnConstraints minWidth="180" maxWidth="180"/>
+                <ColumnConstraints hgrow="ALWAYS"/>
+            </columnConstraints>
+
+            <Label text="Количество потоков:"           GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+            <TextField fx:id="threadCountField"         GridPane.columnIndex="1" GridPane.rowIndex="0"
+                       prefWidth="80" maxWidth="80"/>
+
+            <Label text="Dry Run:"                      GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+            <CheckBox fx:id="dryRunCheckBox"            GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+            <Label text="Макс. коммитов (0 = откл.):"  GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+            <TextField fx:id="maxCommitsField"          GridPane.columnIndex="1" GridPane.rowIndex="2"
+                       prefWidth="80" maxWidth="80"/>
+
+            <Label text="Только одобрение (без слияния):" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+            <CheckBox fx:id="approveOnlyCheckBox"       GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+        </GridPane>
+    </TitledPane>
+
+    <!-- Кнопки -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button text="Сохранить" onAction="#onSave" style="-fx-font-weight: bold;" defaultButton="true"/>
+        <Button text="Отмена"    onAction="#onCancel" cancelButton="true"/>
+    </HBox>
+</VBox>

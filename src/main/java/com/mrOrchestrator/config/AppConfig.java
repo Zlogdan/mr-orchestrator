@@ -90,6 +90,8 @@ public class AppConfig {
     public static class ExecutionConfig {
         private int threadCount = 1;
         private boolean dryRun = false;
+        private int maxCommitsWarning = 0;
+        private boolean approveOnly = false;
 
         public int getThreadCount() {
             return threadCount;
@@ -105,6 +107,22 @@ public class AppConfig {
 
         public void setDryRun(boolean dryRun) {
             this.dryRun = dryRun;
+        }
+
+        public int getMaxCommitsWarning() {
+            return maxCommitsWarning;
+        }
+
+        public void setMaxCommitsWarning(int maxCommitsWarning) {
+            this.maxCommitsWarning = maxCommitsWarning;
+        }
+
+        public boolean isApproveOnly() {
+            return approveOnly;
+        }
+
+        public void setApproveOnly(boolean approveOnly) {
+            this.approveOnly = approveOnly;
         }
     }
 }
