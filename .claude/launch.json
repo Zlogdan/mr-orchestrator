@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "MR Orchestrator (Maven JavaFX)",
+      "runtimeExecutable": "mvn",
+      "runtimeArgs": ["javafx:run"],
+      "port": 0
+    },
+    {
+      "name": "MR Orchestrator (fat jar)",
+      "runtimeExecutable": "java",
+      "runtimeArgs": ["-jar", "target/mr-orchestrator-1.0.2.jar"],
+      "port": 0
+    }
+  ]
+}
