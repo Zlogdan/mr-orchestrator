@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.regex.Pattern;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
@@ -194,17 +195,61 @@ public class GitLabApiClient {
     }
 
     /**
+     * Результат сравнения двух веток: количество коммитов + список заголовков
+     * коммитов, совпавших с паттерном staging-merge.
+     */
+    public static class BranchCompareResult {
+        public final int commitCount;
+        public final List<String> stagingMergeMessages;
+
+        public BranchCompareResult(int commitCount, List<String> stagingMergeMessages) {
+            this.commitCount = commitCount;
+            this.stagingMergeMessages = stagingMergeMessages;
+        }
+    }
+
+    /**
      * Получить количество коммитов в sourceBranch относительно targetBranch.
      * Использует GitLab Compare API — возвращает длину массива commits.
      */
     public int getCommitCount(String projectId, String targetBranch, String sourceBranch) throws Exception {
+        return compareBranches(projectId, targetBranch, sourceBranch, null).commitCount;
+    }
+
+    /**
+     * Сравнить ветки и вернуть:
+     * - количество коммитов
+     * - заголовки коммитов, совпавших с паттерном (если задан)
+     * Один вызов GitLab Compare API покрывает оба запроса.
+     */
+    public BranchCompareResult compareBranches(String projectId, String targetBranch,
+                                               String sourceBranch, String stagingPattern) throws Exception {
         String url = baseUrl + "/api/v4/projects/" + projectId + "/repository/compare"
                 + "?from=" + URLEncoder.encode(targetBranch, StandardCharsets.UTF_8)
-                + "&to=" + URLEncoder.encode(sourceBranch, StandardCharsets.UTF_8);
+                + "&to="   + URLEncoder.encode(sourceBranch, StandardCharsets.UTF_8);
         String body = get(url);
         Map<String, Object> resp = objectMapper.readValue(body, new TypeReference<>() {});
-        Object commits = resp.get("commits");
-        return (commits instanceof List<?> list) ? list.size() : 0;
+        Object commitsObj = resp.get("commits");
+        if (!(commitsObj instanceof List<?> list)) {
+            return new BranchCompareResult(0, List.of());
+        }
+
+        int count = list.size();
+        List<String> stagingMerges = new ArrayList<>();
+
+        if (stagingPattern != null && !stagingPattern.isBlank()) {
+            Pattern pattern = Pattern.compile(stagingPattern);
+            for (Object commit : list) {
+                if (commit instanceof Map<?, ?> commitMap) {
+                    Object title = commitMap.get("title");
+                    if (title instanceof String titleStr && pattern.matcher(titleStr).find()) {
+                        stagingMerges.add(titleStr);
+                    }
+                }
+            }
+        }
+
+        return new BranchCompareResult(count, stagingMerges);
     }
 
     /**

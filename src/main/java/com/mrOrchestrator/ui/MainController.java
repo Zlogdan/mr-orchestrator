@@ -322,12 +322,15 @@ public class MainController {
     }
 
     /**
-     * Асинхронно проверить количество коммитов и выставить предупреждение в comment.
+     * Асинхронно проверить количество коммитов и наличие merge из staging,
+     * выставить предупреждение в comment.
      */
     void checkCommitCount(TableRowModel row, String sourceBranch) {
         if (config == null) return;
         int threshold = config.getExecution().getMaxCommitsWarning();
-        if (threshold <= 0) return;
+        String stagingPattern = config.getExecution().getStagingMergePattern();
+        boolean checkStaging = stagingPattern != null && !stagingPattern.isBlank();
+        if (threshold <= 0 && !checkStaging) return;
         String targetBranch = targetBranchCombo.getValue();
         if (targetBranch == null || targetBranch.isBlank()) return;
         if (sourceBranch == null || TableRowModel.SKIP_OPTION.equals(sourceBranch)) return;
@@ -336,19 +339,31 @@ public class MainController {
         String projectId = apiClient.extractProjectId(repoUrl);
         new Thread(() -> {
             try {
-                int count = apiClient.getCommitCount(projectId, targetBranch, sourceBranch);
-                if (count > threshold) {
-                    Platform.runLater(() -> row.setComment("⚠ Много коммитов: " + count));
-                } else {
-                    Platform.runLater(() -> {
+                GitLabApiClient.BranchCompareResult result =
+                        apiClient.compareBranches(projectId, targetBranch, sourceBranch,
+                                checkStaging ? stagingPattern : null);
+
+                List<String> warnings = new ArrayList<>();
+                if (threshold > 0 && result.commitCount > threshold) {
+                    warnings.add("⚠ Много коммитов: " + result.commitCount);
+                }
+                if (!result.stagingMergeMessages.isEmpty()) {
+                    warnings.add("⚠ Merge из staging (" + result.stagingMergeMessages.size() + ")");
+                }
+
+                String warning = String.join(" | ", warnings);
+                Platform.runLater(() -> {
+                    if (!warning.isEmpty()) {
+                        row.setComment(warning);
+                    } else {
                         String cur = row.getComment();
                         if (cur != null && cur.startsWith("⚠")) {
                             row.setComment("");
                         }
-                    });
-                }
+                    }
+                });
             } catch (Exception e) {
-                logger.warn("Не удалось получить количество коммитов для " + sourceBranch + ": " + e.getMessage());
+                logger.warn("Не удалось получить информацию о коммитах для " + sourceBranch + ": " + e.getMessage());
             }
         }, "commit-count-check").start();
     }

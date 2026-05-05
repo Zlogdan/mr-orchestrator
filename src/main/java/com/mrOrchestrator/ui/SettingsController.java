@@ -30,6 +30,7 @@ public class SettingsController {
     @FXML private CheckBox  dryRunCheckBox;
     @FXML private TextField maxCommitsField;
     @FXML private CheckBox  approveOnlyCheckBox;
+    @FXML private TextField stagingMergePatternField;
 
     private AppConfig config;
     private Stage stage;
@@ -63,6 +64,7 @@ public class SettingsController {
         dryRunCheckBox.setSelected(ex.isDryRun());
         maxCommitsField.setText(String.valueOf(ex.getMaxCommitsWarning()));
         approveOnlyCheckBox.setSelected(ex.isApproveOnly());
+        stagingMergePatternField.setText(nullToEmpty(ex.getStagingMergePattern()));
     }
 
     @FXML
@@ -84,6 +86,7 @@ public class SettingsController {
             ex.setDryRun(dryRunCheckBox.isSelected());
             ex.setMaxCommitsWarning(maxCommits);
             ex.setApproveOnly(approveOnlyCheckBox.isSelected());
+            ex.setStagingMergePattern(stagingMergePatternField.getText().trim());
 
             ConfigLoader.save(config);
             logger.info("Настройки сохранены в config.yaml");

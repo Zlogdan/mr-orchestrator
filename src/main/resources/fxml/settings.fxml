@@ -68,6 +68,10 @@
 
             <Label text="Только одобрение (без слияния):" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
             <CheckBox fx:id="approveOnlyCheckBox"       GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+
+            <Label text="Паттерн merge из staging:"     GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+            <TextField fx:id="stagingMergePatternField" GridPane.columnIndex="1" GridPane.rowIndex="4"
+                       promptText="(?i)merge.*branch.*staging  (пусто = откл.)"/>
         </GridPane>
     </TitledPane>
 

@@ -92,6 +92,7 @@ public class AppConfig {
         private boolean dryRun = false;
         private int maxCommitsWarning = 0;
         private boolean approveOnly = false;
+        private String stagingMergePattern = "(?i)merge.*branch.*staging";
 
         public int getThreadCount() {
             return threadCount;
@@ -123,6 +124,14 @@ public class AppConfig {
 
         public void setApproveOnly(boolean approveOnly) {
             this.approveOnly = approveOnly;
+        }
+
+        public String getStagingMergePattern() {
+            return stagingMergePattern;
+        }
+
+        public void setStagingMergePattern(String stagingMergePattern) {
+            this.stagingMergePattern = stagingMergePattern;
         }
     }
 }

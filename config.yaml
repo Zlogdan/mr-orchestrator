@@ -10,3 +10,4 @@ execution:
   dryRun: false
   maxCommitsWarning: 0  # предупреждение если коммитов в ветке больше этого числа (0 = отключено)
   approveOnly: false    # создать и одобрить MR, но не сливать
+  stagingMergePattern: "(?i)merge.*branch.*staging"  # regex для поиска merge из staging в коммитах (пусто = отключено)
