@@ -106,6 +106,20 @@ public class MainController {
         setupTableColumns();
 
         targetBranchCombo.setEditable(true);
+
+        // При смене целевой ветки перепроверяем все строки таблицы
+        targetBranchCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null || newVal.isBlank()) return;
+            for (TableRowModel row : tableView.getItems()) {
+                String cur = row.getComment();
+                if (cur != null && cur.startsWith("⚠")) {
+                    row.setComment("");
+                }
+            }
+            for (TableRowModel row : tableView.getItems()) {
+                checkCommitCount(row, row.getSelectedBranch());
+            }
+        });
     }
 
     /**
@@ -325,6 +339,13 @@ public class MainController {
                 int count = apiClient.getCommitCount(projectId, targetBranch, sourceBranch);
                 if (count > threshold) {
                     Platform.runLater(() -> row.setComment("⚠ Много коммитов: " + count));
+                } else {
+                    Platform.runLater(() -> {
+                        String cur = row.getComment();
+                        if (cur != null && cur.startsWith("⚠")) {
+                            row.setComment("");
+                        }
+                    });
                 }
             } catch (Exception e) {
                 logger.warn("Не удалось получить количество коммитов для " + sourceBranch + ": " + e.getMessage());
@@ -397,6 +418,11 @@ public class MainController {
                     String selected = comboBox.getValue();
                     row.setSelectedBranch(selected);
                     commitEdit(selected);
+                    // Сбросить устаревшее предупреждение до завершения async-проверки
+                    String cur = row.getComment();
+                    if (cur != null && cur.startsWith("⚠")) {
+                        row.setComment("");
+                    }
                     checkCommitCount(row, selected);
                 }
             });
