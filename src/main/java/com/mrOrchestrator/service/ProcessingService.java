@@ -34,20 +34,17 @@ public class ProcessingService {
      * Запустить обработку всех строк таблицы в пуле потоков.
      *
      * @param rows         список строк таблицы
-     * @param repoUrl      URL репозитория
      * @param targetBranch целевая ветка
      * @param logCallback  callback для записи в UI лог
      */
-    public void processAllRows(List<TableRowModel> rows, String repoUrl,
-                               String targetBranch, Consumer<String> logCallback) {
+    public void processAllRows(List<TableRowModel> rows, String targetBranch, Consumer<String> logCallback) {
         logger.setUiCallback(logCallback);
 
         int threadCount = config.getExecution().getThreadCount();
         boolean dryRun = config.getExecution().isDryRun();
         boolean approveOnly = config.getExecution().isApproveOnly();
 
-        String projectId = apiClient.extractProjectId(repoUrl);
-        logger.info("Начало обработки: проект " + projectId + ", ветка " + targetBranch
+        logger.info("Начало обработки: строк " + rows.size() + ", целевая ветка " + targetBranch
                 + ", потоков: " + threadCount + ", dry-run: " + dryRun + ", approveOnly: " + approveOnly);
 
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
@@ -59,6 +56,17 @@ public class ProcessingService {
                 try {
                     semaphore.acquire();
                     try {
+                        String repoUrl = row.getRepositoryUrl();
+                        if (repoUrl == null || repoUrl.isBlank()) {
+                            Platform.runLater(() -> {
+                                row.setStatus("ошибка");
+                                row.setComment("Не указан репозиторий");
+                                row.setProgress(1.0);
+                            });
+                            return;
+                        }
+                        String projectId = apiClient.extractProjectId(repoUrl);
+                        logger.info("Строка " + row.getSearchTerm() + ": репозиторий " + repoUrl + ", проект " + projectId);
                         mrService.processRow(row, projectId, targetBranch, dryRun, approveOnly);
                     } finally {
                         semaphore.release();

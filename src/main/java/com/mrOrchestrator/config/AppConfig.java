@@ -1,5 +1,8 @@
 package com.mrOrchestrator.config;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Конфигурация приложения, загружаемая из config.yaml
  */
@@ -7,6 +10,7 @@ public class AppConfig {
 
     private GitLabConfig gitlab;
     private ExecutionConfig execution;
+    private List<RepositoryConfig> repositories = new ArrayList<>();
 
     public GitLabConfig getGitlab() {
         return gitlab;
@@ -22,6 +26,49 @@ public class AppConfig {
 
     public void setExecution(ExecutionConfig execution) {
         this.execution = execution;
+    }
+
+    public List<RepositoryConfig> getRepositories() {
+        if (repositories == null) {
+            repositories = new ArrayList<>();
+        }
+        return repositories;
+    }
+
+    public void setRepositories(List<RepositoryConfig> repositories) {
+        this.repositories = repositories == null ? new ArrayList<>() : repositories;
+    }
+
+    /**
+     * Репозиторий, который можно заранее указать для поиска веток.
+     */
+    public static class RepositoryConfig {
+        private String url;
+        private boolean enabled = true;
+
+        public RepositoryConfig() {
+        }
+
+        public RepositoryConfig(String url, boolean enabled) {
+            this.url = url;
+            this.enabled = enabled;
+        }
+
+        public String getUrl() {
+            return url;
+        }
+
+        public void setUrl(String url) {
+            this.url = url;
+        }
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
     }
 
     /**

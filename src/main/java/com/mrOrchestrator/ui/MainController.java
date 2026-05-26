@@ -2,7 +2,9 @@ package com.mrOrchestrator.ui;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.mrOrchestrator.api.GitLabApiClient;
@@ -43,7 +45,7 @@ public class MainController {
     // --- FXML-поля ---
 
     @FXML
-    private TextField repoUrlField;
+    private ComboBox<String> repoUrlField;
 
     @FXML
     private ComboBox<String> targetBranchCombo;
@@ -62,6 +64,9 @@ public class MainController {
 
     @FXML
     private TableColumn<TableRowModel, String> searchTermColumn;
+
+    @FXML
+    private TableColumn<TableRowModel, String> repositoryColumn;
 
     @FXML
     private TableColumn<TableRowModel, String> sourceBranchColumn;
@@ -97,6 +102,7 @@ public class MainController {
             logger.setUiCallback(this::appendLog);
             dryRunCheckBox.setSelected(config.getExecution().isDryRun());
             approveOnlyCheckBox.setSelected(config.getExecution().isApproveOnly());
+            refreshRepositoryComboBox();
             logger.info("Конфигурация загружена успешно");
         } catch (Exception e) {
             logger.error("Ошибка загрузки конфигурации", e);
@@ -129,6 +135,9 @@ public class MainController {
         // Исходное значение (поисковый термин)
         searchTermColumn.setCellValueFactory(data -> data.getValue().searchTermProperty());
 
+        // Репозиторий, в котором найдена ветка
+        repositoryColumn.setCellValueFactory(data -> data.getValue().repositoryUrlProperty());
+
         // Исходная ветка — ComboBox с доступными ветками
         sourceBranchColumn.setCellValueFactory(data -> data.getValue().selectedBranchProperty());
         sourceBranchColumn.setCellFactory(col -> new ComboBoxTableCell());
@@ -154,9 +163,9 @@ public class MainController {
      */
     @FXML
     public void onRefreshBranches() {
-        String repoUrl = repoUrlField.getText().trim();
+        String repoUrl = getRepositoryUrlForBranchRefresh();
         if (repoUrl.isEmpty()) {
-            showError("Ошибка", "Введите URL репозитория");
+            showError("Ошибка", "Введите URL репозитория или включите репозиторий в списке");
             return;
         }
 
@@ -184,11 +193,11 @@ public class MainController {
      */
     @FXML
     public void onParse() {
-        String repoUrl = repoUrlField.getText().trim();
         String input = branchNamesField.getText().trim();
+        List<String> repositoryUrls = getRepositoryUrlsForParsing();
 
-        if (repoUrl.isEmpty()) {
-            showError("Ошибка", "Введите URL репозитория");
+        if (repositoryUrls.isEmpty()) {
+            showError("Ошибка", "Введите URL репозитория или включите репозитории в списке");
             return;
         }
         if (input.isEmpty()) {
@@ -204,45 +213,46 @@ public class MainController {
         tableView.getItems().clear();
 
         new Thread(() -> {
-            String projectId = apiClient.extractProjectId(repoUrl);
-
             for (String term : searchTerms) {
-                TableRowModel row = new TableRowModel(term);
-                Platform.runLater(() -> tableView.getItems().add(row));
+                for (String repoUrl : repositoryUrls) {
+                    try {
+                        String projectId = apiClient.extractProjectId(repoUrl);
+                        List<Branch> found = apiClient.searchBranches(projectId, term);
+                        List<String> branchNames = found.stream()
+                                .map(Branch::getName)
+                                .collect(Collectors.toList());
 
-                try {
-                    List<Branch> found = apiClient.searchBranches(projectId, term);
-                    List<String> branchNames = found.stream()
-                            .map(Branch::getName)
-                            .collect(Collectors.toList());
+                        if (branchNames.isEmpty()) {
+                            logger.info("Для «" + term + "» в репозитории " + repoUrl + " ветки не найдены");
+                            continue;
+                        }
 
-                    // Добавить вариант "Пропустить" последним
-                    branchNames.add(TableRowModel.SKIP_OPTION);
+                        TableRowModel row = new TableRowModel(term, repoUrl);
 
-                    Platform.runLater(() -> {
-                        row.setAvailableBranches(branchNames);
-                        // Список всегда содержит SKIP_OPTION последним.
-                        // Если найдена хотя бы одна реальная ветка (size > 1), выбираем первую;
-                        // иначе выбираем SKIP_OPTION.
-                        if (branchNames.size() > 1) {
+                        // Добавить вариант "Пропустить" последним
+                        branchNames.add(TableRowModel.SKIP_OPTION);
+
+                        Platform.runLater(() -> {
+                            tableView.getItems().add(row);
+                            row.setAvailableBranches(branchNames);
                             String auto = branchNames.get(0);
                             row.setSelectedBranch(auto);
                             checkCommitCount(row, auto);
-                        } else {
-                            row.setSelectedBranch(TableRowModel.SKIP_OPTION);
-                        }
-                    });
+                        });
 
-                    logger.info("Для «" + term + "» найдено веток: " + (branchNames.size() - 1));
-                } catch (Exception e) {
-                    logger.error("Ошибка поиска веток для «" + term + "»", e);
-                    Platform.runLater(() -> {
-                        List<String> opts = new ArrayList<>();
-                        opts.add(TableRowModel.SKIP_OPTION);
-                        row.setAvailableBranches(opts);
-                        row.setSelectedBranch(TableRowModel.SKIP_OPTION);
-                        row.setComment("Ошибка: " + e.getMessage());
-                    });
+                        logger.info("Для «" + term + "» в репозитории " + repoUrl + " найдено веток: " + (branchNames.size() - 1));
+                    } catch (Exception e) {
+                        logger.error("Ошибка поиска веток для «" + term + "» в репозитории " + repoUrl, e);
+                        TableRowModel row = new TableRowModel(term, repoUrl);
+                        Platform.runLater(() -> {
+                            tableView.getItems().add(row);
+                            List<String> opts = new ArrayList<>();
+                            opts.add(TableRowModel.SKIP_OPTION);
+                            row.setAvailableBranches(opts);
+                            row.setSelectedBranch(TableRowModel.SKIP_OPTION);
+                            row.setComment("Ошибка: " + e.getMessage());
+                        });
+                    }
                 }
             }
         }, "parse-branches").start();
@@ -258,15 +268,16 @@ public class MainController {
             return;
         }
 
-        String repoUrl = repoUrlField.getText().trim();
         String targetBranch = targetBranchCombo.getValue();
 
-        if (repoUrl.isEmpty()) {
-            showError("Ошибка", "Введите URL репозитория");
-            return;
-        }
         if (targetBranch == null || targetBranch.trim().isEmpty()) {
             showError("Ошибка", "Выберите целевую ветку");
+            return;
+        }
+        boolean hasEmptyRepo = tableView.getItems().stream()
+                .anyMatch(row -> row.getRepositoryUrl() == null || row.getRepositoryUrl().isBlank());
+        if (hasEmptyRepo) {
+            showError("Ошибка", "В таблице есть строки без репозитория. Выполните парсинг заново.");
             return;
         }
 
@@ -280,7 +291,7 @@ public class MainController {
         ProcessingService processingService = new ProcessingService(config, apiClient);
 
         new Thread(() -> {
-            processingService.processAllRows(rows, repoUrl, targetBranch, this::appendLog);
+            processingService.processAllRows(rows, targetBranch, this::appendLog);
             Platform.runLater(() -> runButton.setDisable(false));
         }, "processing-starter").start();
     }
@@ -334,7 +345,10 @@ public class MainController {
         String targetBranch = targetBranchCombo.getValue();
         if (targetBranch == null || targetBranch.isBlank()) return;
         if (sourceBranch == null || TableRowModel.SKIP_OPTION.equals(sourceBranch)) return;
-        String repoUrl = repoUrlField.getText().trim();
+        String repoUrl = row.getRepositoryUrl();
+        if (repoUrl == null || repoUrl.isBlank()) {
+            repoUrl = getRepositoryUrlInput();
+        }
         if (repoUrl.isEmpty()) return;
         String projectId = apiClient.extractProjectId(repoUrl);
         new Thread(() -> {
@@ -366,6 +380,36 @@ public class MainController {
                 logger.warn("Не удалось получить информацию о коммитах для " + sourceBranch + ": " + e.getMessage());
             }
         }, "commit-count-check").start();
+    }
+
+    /**
+     * Открыть окно управления репозиториями
+     */
+    @FXML
+    public void onOpenRepositories() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/repositories.fxml"));
+            Parent root = loader.load();
+            RepositoriesController ctrl = loader.getController();
+            ctrl.setConfig(config);
+
+            Stage repositoriesStage = new Stage();
+            repositoriesStage.initModality(Modality.WINDOW_MODAL);
+            repositoriesStage.initOwner(tableView.getScene().getWindow());
+            repositoriesStage.setTitle("Репозитории");
+            Scene scene = new Scene(root);
+            scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+            repositoriesStage.setScene(scene);
+            repositoriesStage.setResizable(true);
+
+            ctrl.setStage(repositoriesStage);
+            ctrl.setOnSaveCallback(this::reloadConfig);
+
+            repositoriesStage.showAndWait();
+        } catch (Exception e) {
+            logger.error("Ошибка открытия окна репозиториев", e);
+            showError("Ошибка", "Не удалось открыть список репозиториев:\n" + e.getMessage());
+        }
     }
 
     /**
@@ -407,6 +451,7 @@ public class MainController {
             apiClient = new GitLabApiClient(config.getGitlab());
             dryRunCheckBox.setSelected(config.getExecution().isDryRun());
             approveOnlyCheckBox.setSelected(config.getExecution().isApproveOnly());
+            refreshRepositoryComboBox();
             logger.info("Конфигурация перезагружена");
         } catch (Exception e) {
             logger.error("Ошибка перезагрузки конфигурации", e);
@@ -507,5 +552,78 @@ public class MainController {
                 case "выполнение" -> getStyleClass().add("status-running");
             }
         }
+    }
+
+    private List<String> getRepositoryUrlsForParsing() {
+        List<String> configuredUrls = getEnabledRepositoryUrls();
+        if (!configuredUrls.isEmpty()) {
+            return configuredUrls;
+        }
+
+        String repoUrl = getRepositoryUrlInput();
+        if (repoUrl.isEmpty()) {
+            return List.of();
+        }
+        return List.of(repoUrl);
+    }
+
+    private String getRepositoryUrlForBranchRefresh() {
+        String repoUrl = getRepositoryUrlInput();
+        if (!repoUrl.isEmpty()) {
+            return repoUrl;
+        }
+
+        List<String> enabledUrls = getEnabledRepositoryUrls();
+        return enabledUrls.isEmpty() ? "" : enabledUrls.get(0);
+    }
+
+    private List<String> getEnabledRepositoryUrls() {
+        if (config == null) {
+            return List.of();
+        }
+
+        Set<String> uniqueUrls = new LinkedHashSet<>();
+        for (AppConfig.RepositoryConfig repository : config.getRepositories()) {
+            if (repository == null || !repository.isEnabled() || repository.getUrl() == null) {
+                continue;
+            }
+            String url = repository.getUrl().trim();
+            if (!url.isEmpty()) {
+                uniqueUrls.add(url);
+            }
+        }
+        return new ArrayList<>(uniqueUrls);
+    }
+
+    private void refreshRepositoryComboBox() {
+        if (repoUrlField == null) {
+            return;
+        }
+
+        String currentUrl = getRepositoryUrlInput();
+        List<String> enabledUrls = getEnabledRepositoryUrls();
+        repoUrlField.setItems(FXCollections.observableArrayList(enabledUrls));
+
+        if (enabledUrls.contains(currentUrl)) {
+            repoUrlField.setValue(currentUrl);
+        } else if (!enabledUrls.isEmpty()) {
+            repoUrlField.setValue(enabledUrls.get(0));
+        } else if (!currentUrl.isEmpty()) {
+            repoUrlField.setValue(currentUrl);
+        }
+    }
+
+    private String getRepositoryUrlInput() {
+        if (repoUrlField == null) {
+            return "";
+        }
+
+        String editorText = repoUrlField.getEditor() == null ? "" : repoUrlField.getEditor().getText();
+        if (editorText != null && !editorText.isBlank()) {
+            return editorText.trim();
+        }
+
+        String selectedValue = repoUrlField.getValue();
+        return selectedValue == null ? "" : selectedValue.trim();
     }
 }

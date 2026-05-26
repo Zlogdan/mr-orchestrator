@@ -13,9 +13,9 @@
 
     <!-- URL репозитория -->
     <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="URL репозитория:" minWidth="220"/>
-        <TextField fx:id="repoUrlField" HBox.hgrow="ALWAYS"
-                   promptText="https://gitlab.example.com/group/project"/>
+        <Label text="Репозиторий:" minWidth="220"/>
+        <ComboBox fx:id="repoUrlField" editable="true" HBox.hgrow="ALWAYS"
+                  maxWidth="Infinity" promptText="Выберите или введите URL репозитория"/>
     </HBox>
 
     <!-- Целевая ветка -->
@@ -46,6 +46,7 @@
     <TableView fx:id="tableView" VBox.vgrow="ALWAYS" editable="true">
         <columns>
             <TableColumn fx:id="searchTermColumn" text="Исходное значение" prefWidth="150"/>
+            <TableColumn fx:id="repositoryColumn" text="Репозиторий" prefWidth="260"/>
             <TableColumn fx:id="sourceBranchColumn" text="Исходная ветка" prefWidth="250"/>
             <TableColumn fx:id="statusColumn" text="Статус" prefWidth="100"/>
             <TableColumn fx:id="commentColumn" text="Комментарий" prefWidth="250"/>
@@ -69,6 +70,7 @@
         <Button text="Очистить таблицу" onAction="#onClearTable"/>
         <Button text="Очистить лог" onAction="#onClearLog"/>
         <Region HBox.hgrow="ALWAYS"/>
+        <Button text="Репозитории" onAction="#onOpenRepositories"/>
         <Button text="Настройки" onAction="#onOpenSettings"/>
     </HBox>
 </VBox>
