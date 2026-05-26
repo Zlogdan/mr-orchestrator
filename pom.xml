@@ -17,6 +17,7 @@
         <jackson.version>2.15.3</jackson.version>
         <slf4j.version>2.0.9</slf4j.version>
         <logback.version>1.4.12</logback.version>
+        <poi.version>5.2.5</poi.version>
         <main.class>com.mrOrchestrator.Launcher</main.class>
     </properties>
 
@@ -43,6 +44,13 @@
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
             <version>${jackson.version}</version>
+        </dependency>
+
+        <!-- Apache POI для импорта XLSX -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${poi.version}</version>
         </dependency>
 
         <!-- Логирование -->

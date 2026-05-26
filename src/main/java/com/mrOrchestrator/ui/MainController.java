@@ -6,12 +6,14 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.io.File;
 
 import com.mrOrchestrator.api.GitLabApiClient;
 import com.mrOrchestrator.api.model.Branch;
 import com.mrOrchestrator.config.AppConfig;
 import com.mrOrchestrator.config.ConfigLoader;
 import com.mrOrchestrator.service.ProcessingService;
+import com.mrOrchestrator.service.XlsxTaskImportService;
 import com.mrOrchestrator.ui.model.TableRowModel;
 import com.mrOrchestrator.util.AppLogger;
 
@@ -33,6 +35,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.Modality;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 /**
@@ -256,6 +259,43 @@ public class MainController {
                 }
             }
         }, "parse-branches").start();
+    }
+
+    /**
+     * Импортировать номера задач из XLSX и запустить поиск веток.
+     */
+    @FXML
+    public void onImportXlsx() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Выберите XLSX-файл");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Excel XLSX", "*.xlsx")
+        );
+
+        File file = fileChooser.showOpenDialog(tableView.getScene().getWindow());
+        if (file == null) {
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                List<String> taskKeys = new XlsxTaskImportService().importTaskKeys(file);
+                if (taskKeys.isEmpty()) {
+                    Platform.runLater(() -> showError("Ошибка", "В XLSX-файле не найдено номеров задач RKK-0000000"));
+                    return;
+                }
+
+                String input = String.join(",", taskKeys);
+                Platform.runLater(() -> {
+                    branchNamesField.setText(input);
+                    logger.info("Импортировано номеров задач из XLSX: " + taskKeys.size());
+                    onParse();
+                });
+            } catch (Exception e) {
+                logger.error("Ошибка импорта XLSX", e);
+                Platform.runLater(() -> showError("Ошибка", "Не удалось импортировать XLSX:\n" + e.getMessage()));
+            }
+        }, "import-xlsx").start();
     }
 
     /**
